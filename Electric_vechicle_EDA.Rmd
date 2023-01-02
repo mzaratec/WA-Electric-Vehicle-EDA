@@ -1,0 +1,243 @@
+---
+title: 'Electric Vehicles in WA: Data Explored and Analyzed '
+author: "Miriam Zarate-Chavez - `mzaratechavez3874@floridapoly.edu`"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    theme: journal
+---
+
+#  Introduction 
+
+
+Washington has a current, up-to-date data set for public use containing Battery Electric Vehicles (BEVs) and Plug-in Hybrid Electric Vehicles (PHEVs) registered under the Washington State Department of Licensing. The data set includes the name of the vehicle, year, make, model, location, electric range, and so much more!
+ 
+Battery Electric Vehicles use large batteries and operate without gas or an engine. While Plug-in Hybrid Electric Vehicles use gasoline and contain a large battery; first, the battery is used, then smoothly transition to using gasoline. Both have plug-in charging capabilities. 
+
+The following exploratory data analysis on the data set will help us better understand the state itself and the vehicles. The following questions will help us gain some insight:
+
+- What electric vehicles in the state of Washington currently registered has the best electric range? Worst?
+
+- Is there a most popular make and model for electric vehicles in WA?
+
+- What county and city has the most electric vehicles in WA?
+
+
+# Prerequisites
+
+Important packages to load. 
+
+```{r}
+library(tidyverse)
+library(viridis)
+
+```
+
+# Dataset Loading 
+
+I uploaded this version of the data set onto Github, as the dataset is still updated. You can find this version [here](https://github.com/mzaratec/data_box/blob/main/Electric_Vehicle_Population_Data.csv)  
+
+```{r}
+#dataset was accessed on November 05,2022
+e_vehicle_data <-  read.csv("https://github.com/mzaratec/data_box/blob/main/Electric_Vehicle_Population_Data.csv?raw=true")
+```
+
+Images of the data. This will better help us understand what we are working with. 
+
+![](https://raw.githubusercontent.com/mzaratec/data_box/main/Screenshot_20221127_010930.png)
+
+![](https://raw.githubusercontent.com/mzaratec/data_box/main/Screenshot_20221127_011010.png)
+
+## Cleaning Up Data 
+
+When looking at the dataset, I noticed that there were locations outside the State of WA. So we will have to clean that up. Something else that came along is that some of the registered vehicles have a zero for electric range for newer vehicles, so we will also have to clean that up. For example, a Tesla with a zero electric range is impossible because the vehicles are known to be electric, and for the others, it can be seen as "trash values."
+
+```{r}
+clean_EVD <-  filter(e_vehicle_data,State=="WA", Electric.Range!=0)
+clean_EVD
+```
+
+
+# Exploratory Data Analysis
+
+Here we will do a "brief" and "deep analysis" of the data set. The brief analysis will focus more on uni-variate. In contrast, the deep analysis will focus more on multivariate data analysis, and we will discuss the questions more in-depth.
+
+## A Brief Analysis
+
+A quick overview  and summary of the data and of each of the variables. 
+```{r}
+summary(clean_EVD)
+```
+
+The following will help us better visualize and see what we are working with before we go deeper into the a of the data. 
+
+By using unique(), we see all of the different makes that are included in the data set, and we see that 32 different makes are included. 
+
+```{r}
+unique(clean_EVD$Make)
+```
+
+
+```{r}
+make_count <-  clean_EVD %>% count(Make) %>% arrange(desc(n))
+make_count
+```
+
+The data frame above shows all of the makes included in  the dataset and was rearranged in descending order by the total of the makes that are registered. 
+
+ 
+```{r}
+ggplot(data = make_count)+
+       geom_point(aes(x =reorder(Make,-n),y =n,color=n))+
+    scale_color_viridis(discrete=FALSE)+
+     coord_flip()+
+    ggtitle("Amount of Electric Vehicles Registered by Make in WA ")+
+  labs(x = "Make", y = "Total",color= "Total")
+```
+
+
+
+This table helps visualize the total of the makes that are currently registered in the state of Washington. The vehicle make, Tesla is by far the most commonly reported electric vehicle.  
+
+Currently, there are 74,089 electric vehicles in the state of WA. 
+```{r}
+clean_EVD %>% count()
+```
+
+Here are the totals of electric vehicles by city. Here we can see that the city of Seattle has the most significant amount of registered electric cars.  
+
+```{r}
+city_total<-  clean_EVD %>% count(City) %>% arrange(desc(n))
+city_total  
+```
+While in King County has the greatest amount of electric cars compared to the other counties in the State of Washington.  
+
+```{r}
+county_total<-  clean_EVD %>% count(County) %>% arrange(desc(n))
+county_total
+```
+## A Deeper Data Anaylsis
+
+We now get into the more in-depth with multiple variables and better understand the data and see any correlations. 
+
+Understanding which vehicles have the best electric range helps us understand and choose a more range reliable and better fit for your lifestyle. 
+
+### What electric vehicles in the State of Washington currently registered has the best electric range? Worst?
+
+The following is used to create a dataset to tidy up that data and order them by there mean depending on the grouping. 
+```{r}
+#to have the tidy data & make life easy :)
+makemodelrange <- clean_EVD %>% 
+  select(Make,Model,Model.Year,Electric.Range) %>% 
+  group_by(Make,Model,Model.Year)%>% 
+  #  distinct(Make,Model,Model.Year,Electric.Range) %>% 
+  mutate(ElectricRange = mean(Electric.Range,na.rm =T)) %>% 
+  arrange(desc(Electric.Range)) %>% 
+  distinct(Make,Model,Model.Year,ElectricRange)
+
+makemodelrange 
+```
+
+```{r}
+makemodelrange %>% 
+head(1)
+
+```
+Above, we can see that the 2020 Tesla Model S has the best electric range of all of the electric vehicles in WA. 
+
+
+```{r}
+makemodelrange%>% 
+arrange(ElectricRange) %>%
+head(4)
+```
+The above shows the make Toyota Prius Plug-In with the model year 2012 through 2015 has the worst electric range of 6. There is no exact one; just a group of four that were the worst.Which are all Toyota Prius Plug-In from the years 2012 to 2015. 
+
+```{r}
+  ggplot(data = makemodelrange)+
+  geom_point(aes(x=ElectricRange,y=Make,color=Model.Year))+
+  scale_color_viridis(discrete=FALSE)+
+  ggtitle("Make vs. Electric Range")+
+  labs(x="Electric Range", y= " Make ", color="Model Year")
+```
+
+We can see that the vehicle with the worst electric range is from the years 2012-2014  from the previous data frame, and we can see that the darker blue dots show that there around the early 2000s. Most vehicles around that year range tend to have a lower electric range. However, it is the opposite for more recent electric vehicles. In the Make vs. Electric vehicle, we see that more green and yellow colors are mainly in the lower end. The brand with the most consistent electric ranges has to be Tesla, whose vehicles are significantly higher than others.
+
+### Is there a most popular make and model for electric vehicles in WA?
+
+The following table contains the totals of each make and model arranged descendingly.
+
+```{r}
+vehicle_rank <-    clean_EVD %>% 
+  count(Make,Model) %>% 
+arrange(desc(n))
+vehicle_rank
+```
+
+
+```{r}
+top10<- vehicle_rank %>% 
+  head(10) 
+ggplot(data = top10)+
+  geom_point(aes(x=reorder(Model,n), y =n , color= Make))+
+  coord_flip()+
+  ggtitle("Top 10 Vechicles (Make & Model) ")+
+  labs(x= "Model", y="Make")
+```
+
+The table above shows the top 10 makes with the model in WA. The most common vehicle is a Tesla Model 3, and coming in second place is Nissan Leaf.
+
+The top makes and model for electric vehicles in the state of WA is the Tesla Model 3, with a total of 13,642.
+
+```{r}
+vehicle_rank %>% 
+  arrange(desc(n)) %>% 
+  head(1)
+```
+
+
+
+### What county and city has the most electric vehicles in WA?
+
+Here is a table that contains the total number of vehicles by city and county. 
+```{r}
+countandcity <- clean_EVD %>% 
+  count(County,City) %>% 
+   arrange(desc(n))
+countandcity
+```
+```{r}
+top10county <- countandcity %>% 
+  head(10)
+ggplot(data=top10county)+
+  geom_point(aes(x=reorder(City,-n),y=n,color=County))+
+  
+  coord_flip()+
+  ggtitle("Top 10 County & Cities With The Most Electric Vehicles")+
+  labs(x="Cities",y="Total")
+```
+
+The table above visualizes the top 10 Cities with the most electric vehicles, color-coded by the County they belong to. Most of the cities from the top ten happen to be from King county, which is an interesting find. 
+
+```{r}
+countandcity %>% 
+  head(1)
+```
+The County and City with the most electric vehicles in King County, Seattle, totaling 13,628.  
+
+# Conclusion
+
+Electric Vehicles vary in electric ranges; however, the city with the most electric vehicles is Seattle, and most of them are Tesla which has one of the best electric ranges compared to other makes. A Tesla would be a better fit for those driving long distances.   
+  
+# Future Works
+
+For later works, I would like to see if there is a correlation between the amount of wealth in the area to the total amount of electric vehicles. Tesla vehicles are more expensive, and certain cities or regions have a significantly larger amount of electric cars. I would like to see if there is any correlation.   
+
+ 
+# Datasets Cited 
+
+The current dataset can be found on and was provided by the State of Washington and is collected and maintained by the Washington State Department of Licensing. 
+https://catalog.data.gov/dataset/electric-vehicle-population-data 
+
+\br
